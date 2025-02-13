@@ -1,0 +1,60 @@
+steps:
+  # Step 1: Clone the Git repository
+- name: gcr.io/cloud-builders/git
+    id: Clone-Repo
+    args:
+      - "clone"
+- "https://github.com/Sagardev88/Google_GKE"
+      - "--branch=$_GIT_BRANCH"
+      - "--depth=1"
+    dir: "/workspace"
+ 
+  # Step 2: Change to the Terraform directory
+  - name: alpine
+    id: Change-Dir
+    entrypoint: sh
+    args:
+      - "-c"
+      - "mv /workspace/Google_GKE /workspace/terraform"
+ 
+  # Step 3: Initialize Terraform
+  - name: hashicorp/terraform:latest
+    id: Init
+    dir: /workspace/terraform
+    entrypoint: sh
+    args:
+      - "-c"
+      - |
+        terraform init \
+        -backend-config="bucket=$_TF_BUCKET" \
+        -backend-config="prefix=$_TF_PREFIX"
+ 
+  # Step 4: Terraform Plan
+  - name: hashicorp/terraform:latest
+    id: Plan
+    dir: /workspace/terraform
+    entrypoint: sh
+    args:
+      - "-c"
+      - |
+        terraform plan -out=tfplan \
+        -var="project_id=$PROJECT_ID" \
+        -var="region=$_REGION"
+ 
+  # Step 5: Terraform Apply
+  - name: hashicorp/terraform:latest
+    id: Apply
+    dir: /workspace/terraform
+    entrypoint: sh
+    args:
+      - "-c"
+      - |
+        terraform apply -auto-approve tfplan
+ 
+substitutions:
+  _GIT_BRANCH: "main"
+  _TF_BUCKET: "your-terraform-state-bucket"
+  _TF_PREFIX: "terraform/state"
+  _REGION: "us-central1"
+ 
+timeout: 1800s
